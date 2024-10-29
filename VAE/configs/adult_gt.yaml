@@ -1,0 +1,37 @@
+program: run_train_gt.py
+method: grid
+metric:
+  name: "Test/CF-total"
+  goal: minimize
+name: "adult"                # This is the name of the sweep
+project: "NeurIPS24-DCEVAE"  # This is the project the sweep should be placed under
+entity: ""
+
+parameters:
+  run:
+    values: [1]
+  use_label:
+    values: [True]
+  dataset:
+    values: ["adult"]
+  a_f:
+    values: [0]
+  u_kl:
+    values: [0.5]
+  a_h:
+    values: [0.1]
+  n_epochs:
+    values: [500]
+  lr:
+    values: [0.0001]
+  model:
+    values: ["dcevae"]
+  global_path:
+    values: ["saved/final"]
+  
+# this is required so that boolean args like `--c_decreasing` are only passed if their value is true
+command:
+  - ${interpreter}
+  - ${program}
+  - ${args_no_boolean_flags}
+  - "--sweep"

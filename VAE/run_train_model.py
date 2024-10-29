@@ -8,8 +8,7 @@ from pathlib import Path
 
 
 sys.path.append('../')
-#sys.path.append('../')
-from law.dataset import SimLaw
+from adult.dataset import SimUCIAdultTrain
 
 import wandb
 
@@ -25,11 +24,10 @@ parser.add_argument('--model',type=str, default='cvae', help='model')
 parser.add_argument('--a_y', type=float, default=1,  help='hyper-parameter for y')
 parser.add_argument('--a_r', type=float, default=1, help='hyper-parameter for x_r')
 parser.add_argument('--a_d', type=float, default=1, help='hyper-parameter for x_d')
-parser.add_argument('--a_f', type=float, default=0.15, help='hyper-parameter for fairness')
+parser.add_argument('--a_a', type=float, default=1, help='hyper-parameter for a recon from z')
+parser.add_argument('--a_f', type=float, default=0, help='hyper-parameter for fairness')
+parser.add_argument('--a_h', type=float, default=0.4, help='hyper-parameter for independency')
 parser.add_argument('--u_kl',  type=float, default=1, help='hyper-parameter for u_kl')
-parser.add_argument('--a_h', type=float, default=0.4, help='hyper-parameter for h')
-
-parser.add_argument('--u_dim', type=int, default=7, help='dim of u')
 parser.add_argument('--ur_dim', type=int, default=3, help='dim of ur')
 parser.add_argument('--ud_dim', type=int, default=4, help='dim of ud')
 parser.add_argument('--h_dim', type=int, default=100, help='dim of ud')
@@ -56,7 +54,7 @@ parser.add_argument('--dataset', type=str, default='adult', help='adult or law')
 
 parser.add_argument('--no_wandb', action='store_true', help='whether to use wandb')
 parser.add_argument('--project_name', default='NeurIPS24-CFF-Test')
-parser.add_argument('--wandb_entity', default='zyzhou')
+parser.add_argument('--wandb_entity', default='')
 parser.add_argument('--sweep', action='store_true', default=False)
 parser.add_argument('--run_name', default='run')
 parser.add_argument('--dataset_root', default='../VAE/saved/0426')
@@ -83,37 +81,42 @@ def main(args):
     result_path = src_path / f"{args.global_path}/{args.dataset}/est/{args.model}"
 
 
-    if args.model == 'cvae':
-        from model import CVAE
-        from CVAE.train_test import train
+    if args.model == 'dcevae':
+        from model import DCEVAE    
+        from DCEVAE.train_test import train
+        from DCEVAE.utils import make_adult_loader, make_balancing_loader, make_law_loader
     else:
         raise ValueError("Model not supported")
 
-    if args.dataset == 'law':
-        train_set = SimLaw(split='train', root = args.dataset_root)
-        valid_set = SimLaw(split='valid', root = args.dataset_root)
-        test_set = SimLaw(split='test', root = args.dataset_root)
+    if args.dataset == 'adult':
+        # always use G(x,y,a,a') for dataset
+        train_set = SimUCIAdultTrain(split='train', root = args.dataset_root)
+        valid_set = SimUCIAdultTrain(split='valid', root = args.dataset_root)
+        test_set = SimUCIAdultTrain(split='test', root = args.dataset_root)
         train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
         valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=args.batch_size, shuffle=False)
         test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
-        input_dim = {'r':8, 'd':2, 'a':1, 'y':1}
+        input_dim = {'r':3, 'd':6, 'a':1, 'y':1}
     else:
         raise NotImplementedError
     
-    if args.model == 'cvae':
-        args.save_path = result_path / 'a_r_{:s}_a_d_{:s}_a_y_{:s}_a_f_{:s}_u_{:d}_run_{:d}_use_label_{:s}'\
-                            .format(str(args.a_r),
-                                    str(args.a_d), 
-                                    str(args.a_y), 
-                                    str(args.a_f), 
-                                    args.u_dim, 
-                                    args.run, 
-                                    str(args.use_label))
-        model = CVAE(r_dim=input_dim['r'],
-                d_dim=input_dim['d'], 
-                sens_dim=input_dim['a'], 
-                label_dim=input_dim['y'], 
-                args=args).to(args.device)
+    if args.model == 'dcevae':
+        args.save_path = result_path / 'a_r_{:s}_a_d_{:s}_a_y_{:s}_a_h_{:s}_a_f_{:s}_u_{:s}_ur_{:d}_ud_{:d}_run_{:d}_use_label_{:s}'\
+                                  .format(str(args.a_r), 
+                                          str(args.a_d), 
+                                          str(args.a_y), 
+                                          str(args.a_h), 
+                                          str(args.a_f),
+                                          str(args.u_kl), 
+                                          args.ur_dim, 
+                                          args.ud_dim, 
+                                          args.run, 
+                                          str(args.use_label))
+        model = DCEVAE(r_dim=input_dim['r'], 
+                       d_dim=input_dim['d'], 
+                       sens_dim=input_dim['a'], 
+                       label_dim=input_dim['y'],
+                       args=args).to(args.device)
     else:
         raise ValueError("Model not supported")
 
@@ -129,5 +132,6 @@ def main(args):
     print("Training")
 
     train(model, train_loader, valid_loader, args)
+    #test(test_loader, args)
 
 main(args)
