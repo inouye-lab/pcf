@@ -37,6 +37,10 @@ To begin running experiments you can just enter the wandb agent command and this
 The next step is to get estimated VAE. Run the following sweep under the directory `VAE` 
 ```$ wandb sweep configs/law.yaml```.
 
+## Notes 
+The result with DCEVAE on Adult can be found in the branch `dcevae`. 
+We created a separate branch due to some difference in model and experiment setup. 
+
 ## Citation
 If you find this code useful, we would be grateful if you cite our [paper](https://openreview.net/forum?id=J0Itri0UiN)
 ```
