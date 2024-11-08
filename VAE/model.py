@@ -118,6 +118,8 @@ class CVAE(nn.Module):
         d = self.decoder_ua_to_d(torch.cat([u, a], 1))
         if add_a_impact:
             # this is applied only when generating semi-synthetic dataset to amplify the impact of A 
+            # note that this won't lead to unfair comparison against any method since this changes the semi-synthetic dataset which is used for all methods
+            # we added this because in our experiments we noticed that naive training of CVAE leads to minimal impact of A on Y, which leads to too fair a dataset
             d = d + 2*a
         d_dist = dists.MultivariateNormal(d, torch.eye(d.size(1)).to(self.device))
         d_hard = d_dist.sample()
